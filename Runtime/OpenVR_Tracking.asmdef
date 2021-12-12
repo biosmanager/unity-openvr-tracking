@@ -1,0 +1,22 @@
+{
+    "name": "OpenVR_Tracking",
+    "rootNamespace": "OVRT",
+    "references": [
+        "GUID:35b9c7a103b322f43805bf1744257ac7",
+        "GUID:1fbf338ef6b952a448262a7ff7df5fe4"
+    ],
+    "includePlatforms": [
+        "Editor",
+        "WSA",
+        "WindowsStandalone32",
+        "WindowsStandalone64"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

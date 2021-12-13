@@ -7,10 +7,9 @@ namespace OVRT
 {
     public static class OVRT_Events
     {
-        public static UnityEvent<uint> TrackedDeviceActivated = new UnityEvent<uint>();
-        public static UnityEvent TrackedDeviceDeactivated = new UnityEvent();
+        public static UnityEvent<int, bool> TrackedDeviceConnected = new UnityEvent<int, bool>();
 
         public static UnityEvent<TrackedDevicePose_t[]> NewPoses = new UnityEvent<TrackedDevicePose_t[]>();
-        public static UnityEvent<string, TrackedDevicePose_t, uint> NewBoundPose = new UnityEvent<string, TrackedDevicePose_t, uint>();
+        public static UnityEvent<string, TrackedDevicePose_t, int> NewBoundPose = new UnityEvent<string, TrackedDevicePose_t, int>();
     }
 }

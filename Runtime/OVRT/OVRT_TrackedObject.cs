@@ -4,6 +4,9 @@ using Valve.VR;
 
 namespace OVRT
 {
+    /// <summary>
+    /// Maps tracked OpenVR poses to transform by device index.
+    /// </summary>
     public class OVRT_TrackedObject : MonoBehaviour
     {
         public enum EIndex
@@ -35,7 +38,16 @@ namespace OVRT
         public bool IsValid { get; private set; }
         public bool IsConnected { get; private set; }  
 
-        private UnityAction<TrackedDevicePose_t[]> onNewPosesAction;
+        private UnityAction<TrackedDevicePose_t[]> _onNewPosesAction;
+        private UnityAction<int, bool> _onDeviceConnectedAction;
+
+        private void OnDeviceConnected(int index, bool connected)
+        {
+            if ((int)this.index == index)
+            {
+                IsConnected = connected;
+            }
+        }
 
         private void OnNewPoses(TrackedDevicePose_t[] poses)
         {
@@ -45,12 +57,9 @@ namespace OVRT
             var i = (int)index;
 
             IsValid = false;
-            IsConnected = false;
 
             if (poses.Length <= i)
                 return;
-
-            IsConnected = poses[i].bDeviceIsConnected;
 
             if (!poses[i].bDeviceIsConnected)
                 return;
@@ -76,19 +85,21 @@ namespace OVRT
 
         private void Awake()
         {
-            onNewPosesAction += OnNewPoses;
+            _onNewPosesAction += OnNewPoses;
+            _onDeviceConnectedAction += OnDeviceConnected;
         }
 
-        void OnEnable()
+        private void OnEnable()
         {
-            OVRT_Events.NewPoses.AddListener(onNewPosesAction);
-
+            OVRT_Events.NewPoses.AddListener(_onNewPosesAction);
+            OVRT_Events.TrackedDeviceConnected.AddListener(_onDeviceConnectedAction);
         }
 
-        void OnDisable()
+        private void OnDisable()
         {
-            OVRT_Events.NewPoses.RemoveListener(onNewPosesAction);
+            OVRT_Events.NewPoses.RemoveListener(_onNewPosesAction);
             IsValid = false;
+            IsConnected = false;
         }
     }
 }

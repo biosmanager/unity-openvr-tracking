@@ -4,26 +4,38 @@ using Valve.VR;
 
 namespace OVRT
 {
+    /// <summary>
+    /// Maps tracked OpenVR poses to transform by serial number bindings. Can use tracker roles defined by SteamVR.
+    /// </summary>
     public class OVRT_BoundTrackedObject : MonoBehaviour
     {
         public string binding;
         [Tooltip("If not set, relative to parent")]
         public Transform origin;
 
-        public uint DeviceIndex { get; private set; }
+        public int DeviceIndex { get; private set; } = -1;
         public bool IsValid { get; private set; }
         public bool IsConnected { get; private set; }
 
-        private UnityAction<string, TrackedDevicePose_t, uint> onNewBoundPoseAction;
+        private UnityAction<string, TrackedDevicePose_t, int> _onNewBoundPoseAction;
+        private UnityAction<int, bool> _onDeviceConnectedAction;
 
-        private void OnNewBoundPose(string binding, TrackedDevicePose_t pose, uint deviceIndex)
+        private void OnDeviceConnected(int index, bool connected)
+        {
+            if (DeviceIndex == index && !connected)
+            {
+                IsConnected = false;
+            }
+        }
+
+        private void OnNewBoundPose(string binding, TrackedDevicePose_t pose, int deviceIndex)
         {
             if (this.binding != binding)
                 return;
 
             IsValid = false;
 
-            DeviceIndex = deviceIndex;
+            DeviceIndex = (int)deviceIndex;
             IsConnected = pose.bDeviceIsConnected;
 
             if (!pose.bDeviceIsConnected)
@@ -50,19 +62,22 @@ namespace OVRT
 
         private void Awake()
         {
-            onNewBoundPoseAction += OnNewBoundPose;
+            _onNewBoundPoseAction += OnNewBoundPose;
+            _onDeviceConnectedAction += OnDeviceConnected;
         }
 
-        void OnEnable()
+        private void OnEnable()
         {
-            OVRT_Events.NewBoundPose.AddListener(onNewBoundPoseAction);
-
+            OVRT_Events.NewBoundPose.AddListener(_onNewBoundPoseAction);
+            OVRT_Events.TrackedDeviceConnected.AddListener(_onDeviceConnectedAction);
         }
 
-        void OnDisable()
+        private void OnDisable()
         {
-            OVRT_Events.NewBoundPose.RemoveListener(onNewBoundPoseAction);
+            OVRT_Events.NewBoundPose.RemoveListener(_onNewBoundPoseAction);
+            OVRT_Events.TrackedDeviceConnected.RemoveListener(_onDeviceConnectedAction);
             IsValid = false;
+            IsConnected = false;
         }
     }
 }

@@ -1,8 +1,8 @@
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using UnityEngine;
 using UnityEngine.Events;
 using Valve.VR;
@@ -47,7 +47,7 @@ namespace OVRT
             }
 
             var json = File.ReadAllText(steamVrSettingsPath);
-            var steamVrSettings = JsonConvert.DeserializeObject<dynamic>(json);
+            var steamVrSettings = JObject.Parse(json);
 
             if (steamVrSettings.ContainsKey("trackers"))
             {

@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.2] - 2021-12-14
+- Add prefabs.
+- Make compatible with .NET Standard 2.0.
+
 ## [1.0.1] - 2021-12-14
 - Remove leftover SteamVR assembly references.
 

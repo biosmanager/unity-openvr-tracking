@@ -24,7 +24,7 @@ namespace OVRT
 
         public ETrackingUniverseOrigin trackingUniverse = ETrackingUniverseOrigin.TrackingUniverseStanding;
         public UpdateMode updateMode = UpdateMode.Update;
-        public bool useSteamVrTrackerRoles = false;
+        public bool useSteamVrTrackerRoles = true;
 
         public bool[] ConnectedDeviceIndices { get; private set; } = new bool[OpenVR.k_unMaxTrackedDeviceCount];
         public Dictionary<string, string> Bindings { get; set; } = new Dictionary<string, string>();

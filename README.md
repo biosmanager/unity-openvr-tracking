@@ -16,5 +16,6 @@ Add `"requireHmd" : false` to the `steamvr` section of the SteamVR configuration
 1. Attach the `OVRT_Manager` script to a GameObject.
 2. Attach either `OVRT_TrackedObject` or `OVRT_BoundTrackedObject` to a GameObject you want to track.
 
-Bindings map the serial number of a tracked device to a string. Any bound tracked object with that string receives poses from the mapped tracked device.
-OVRT can also use tracker bindings from SteamVR. See `steamvr.vrsettings` for the used binding strings.
+Bindings map the serial number of a tracked device to a string. Any bound tracked object with that string receives poses from the mapped tracked device. Bindings can be assigned by using the `Bindings` property of `OVRT_Manager`.
+
+OVRT can also use tracker bindings from SteamVR. See `steamvr.vrsettings` for the used binding strings. For example, the right shoulder role is called `TrackerRole_RightShoulder`. When a `OVRT_BoundTrackedObject` has this binding string set, it receives poses from the tracker that was assigned to the right shoulder in SteamVR.

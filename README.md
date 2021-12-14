@@ -4,7 +4,7 @@ SteamVR tracking for Unity without requiring an HMD to be present or fiddling wi
 
 ## Installation
 
-1. Install [OpenVR for Unity XR plugin](https://github.com/ValveSoftware/unity-xr-plugin) in your project (the SteamVR Unity plugin is NOT required).
+1. Install [OpenVR for Unity XR plugin](https://github.com/ValveSoftware/unity-xr-plugin) in your project (the SteamVR Unity plugin is NOT required). Make sure to enable the plugin in the XR management settings or otherwise the `openvr_api.dll` will not be included in builds.
 2. Add this package to the project.
 
 ## Configuration

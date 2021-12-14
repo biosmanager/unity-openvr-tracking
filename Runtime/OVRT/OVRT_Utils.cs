@@ -219,9 +219,86 @@ namespace OVRT
 
 			public void Interpolate(RigidTransform to, float t)
 			{
-				pos = SteamVR_Utils.Lerp(pos, to.pos, t);
-				rot = SteamVR_Utils.Slerp(rot, to.rot, t);
+				pos = OVRT_Utils.Lerp(pos, to.pos, t);
+				rot = OVRT_Utils.Slerp(rot, to.rot, t);
 			}
+		}
+
+		// this version does not clamp [0..1]
+		public static Quaternion Slerp(Quaternion A, Quaternion B, float t)
+		{
+			var cosom = Mathf.Clamp(A.x * B.x + A.y * B.y + A.z * B.z + A.w * B.w, -1.0f, 1.0f);
+			if (cosom < 0.0f)
+			{
+				B = new Quaternion(-B.x, -B.y, -B.z, -B.w);
+				cosom = -cosom;
+			}
+
+			float sclp, sclq;
+			if ((1.0f - cosom) > 0.0001f)
+			{
+				var omega = Mathf.Acos(cosom);
+				var sinom = Mathf.Sin(omega);
+				sclp = Mathf.Sin((1.0f - t) * omega) / sinom;
+				sclq = Mathf.Sin(t * omega) / sinom;
+			}
+			else
+			{
+				// "from" and "to" very close, so do linear interp
+				sclp = 1.0f - t;
+				sclq = t;
+			}
+
+			return new Quaternion(
+				sclp * A.x + sclq * B.x,
+				sclp * A.y + sclq * B.y,
+				sclp * A.z + sclq * B.z,
+				sclp * A.w + sclq * B.w);
+		}
+
+		public static Vector3 Lerp(Vector3 A, Vector3 B, float t)
+		{
+			return new Vector3(
+				Lerp(A.x, B.x, t),
+				Lerp(A.y, B.y, t),
+				Lerp(A.z, B.z, t));
+		}
+
+		public static float Lerp(float A, float B, float t)
+		{
+			return A + (B - A) * t;
+		}
+
+		public static double Lerp(double A, double B, double t)
+		{
+			return A + (B - A) * t;
+		}
+
+		private static float _copysign(float sizeval, float signval)
+		{
+			return Mathf.Sign(signval) == 1 ? Mathf.Abs(sizeval) : -Mathf.Abs(sizeval);
+		}
+
+		public static Quaternion GetRotation(this Matrix4x4 matrix)
+		{
+			Quaternion q = new Quaternion();
+			q.w = Mathf.Sqrt(Mathf.Max(0, 1 + matrix.m00 + matrix.m11 + matrix.m22)) / 2;
+			q.x = Mathf.Sqrt(Mathf.Max(0, 1 + matrix.m00 - matrix.m11 - matrix.m22)) / 2;
+			q.y = Mathf.Sqrt(Mathf.Max(0, 1 - matrix.m00 + matrix.m11 - matrix.m22)) / 2;
+			q.z = Mathf.Sqrt(Mathf.Max(0, 1 - matrix.m00 - matrix.m11 + matrix.m22)) / 2;
+			q.x = _copysign(q.x, matrix.m21 - matrix.m12);
+			q.y = _copysign(q.y, matrix.m02 - matrix.m20);
+			q.z = _copysign(q.z, matrix.m10 - matrix.m01);
+			return q;
+		}
+
+		public static Vector3 GetPosition(this Matrix4x4 matrix)
+		{
+			var x = matrix.m03;
+			var y = matrix.m13;
+			var z = matrix.m23;
+
+			return new Vector3(x, y, z);
 		}
 	}
 }

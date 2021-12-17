@@ -19,3 +19,6 @@ Add `"requireHmd" : false` to the `steamvr` section of the SteamVR configuration
 Bindings map the serial number of a tracked device to a string. Any bound tracked object with that string receives poses from the mapped tracked device. Bindings can be assigned by using the `Bindings` property of `OVRT_Manager`.
 
 OVRT can also use tracker bindings from SteamVR. See `steamvr.vrsettings` for the used binding strings. For example, the right shoulder role is called `TrackerRole_RightShoulder`. When a `OVRT_BoundTrackedObject` has this binding string set, it receives poses from the tracker that was assigned to the right shoulder in SteamVR.
+
+You can not open the SteamVR tracker role UI when no HMD is connected. In this case you can either edit `steamvr.vrsettings` or use this tool:
+[SteamVR tracker role utility](https://github.com/biosmanager/steamvr-tracker-role-utility).

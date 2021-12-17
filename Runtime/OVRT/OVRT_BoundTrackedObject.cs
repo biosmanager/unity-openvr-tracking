@@ -19,6 +19,7 @@ namespace OVRT
 
         private UnityAction<string, TrackedDevicePose_t, int> _onNewBoundPoseAction;
         private UnityAction<int, bool> _onDeviceConnectedAction;
+        private UnityAction _onTrackerRolesChanged;
 
         private void OnDeviceConnected(int index, bool connected)
         {
@@ -60,22 +61,31 @@ namespace OVRT
             }
         }
 
+        private void OnTrackerRolesChanged()
+        {
+            IsValid = false;
+            IsConnected = false;
+        }
+
         private void Awake()
         {
             _onNewBoundPoseAction += OnNewBoundPose;
             _onDeviceConnectedAction += OnDeviceConnected;
+            _onTrackerRolesChanged += OnTrackerRolesChanged;
         }
 
         private void OnEnable()
         {
             OVRT_Events.NewBoundPose.AddListener(_onNewBoundPoseAction);
             OVRT_Events.TrackedDeviceConnected.AddListener(_onDeviceConnectedAction);
+            OVRT_Events.TrackerRolesChanged.AddListener(_onTrackerRolesChanged);
         }
 
         private void OnDisable()
         {
             OVRT_Events.NewBoundPose.RemoveListener(_onNewBoundPoseAction);
             OVRT_Events.TrackedDeviceConnected.RemoveListener(_onDeviceConnectedAction);
+            OVRT_Events.TrackerRolesChanged.RemoveListener(_onTrackerRolesChanged);
             IsValid = false;
             IsConnected = false;
         }

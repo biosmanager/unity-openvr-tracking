@@ -11,5 +11,7 @@ namespace OVRT
 
         public static UnityEvent<TrackedDevicePose_t[]> NewPoses = new UnityEvent<TrackedDevicePose_t[]>();
         public static UnityEvent<string, TrackedDevicePose_t, int> NewBoundPose = new UnityEvent<string, TrackedDevicePose_t, int>();
+
+        public static UnityEvent TrackerRolesChanged = new UnityEvent();
     }
 }

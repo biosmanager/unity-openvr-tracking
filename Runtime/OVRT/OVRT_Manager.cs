@@ -205,7 +205,8 @@ namespace OVRT
                         OVRT_Events.TrackedDeviceConnected.Invoke((int)vrEvent.trackedDeviceIndex, false);
                         break;
                     case EVREventType.VREvent_TrackersSectionSettingChanged:
-                        UpdateSteamVrTrackerBindings();
+                        // Allow some time until SteamVR configuration file has been updated on disk
+                        Invoke("UpdateSteamVrTrackerBindings", 1.0f);
                         break;
                     default:
                         break;
@@ -243,6 +244,7 @@ namespace OVRT
         {
             var trackerBindings = GetSteamVrTrackerBindings();
             SteamVrTrackerBindings = trackerBindings;
+            OVRT_Events.TrackerRolesChanged.Invoke();
         }
     }
 }

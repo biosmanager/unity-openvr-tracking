@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.3] - 2021-12-17
+- Handle tracker role changes.
+
 ## [1.0.2] - 2021-12-14
 - Add prefabs.
 - Make compatible with .NET Standard 2.0.

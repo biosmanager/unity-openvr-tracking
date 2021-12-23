@@ -127,9 +127,13 @@ namespace OVRT
             }
 
             // Ensure SteamVR is running
-            var dummyError = EVRInitError.None;
-            OpenVR.Init(ref dummyError, EVRApplicationType.VRApplication_Scene);
-            OpenVR.Shutdown();
+            if (!OpenVR.IsHmdPresent())
+            {
+                var dummyError = EVRInitError.None;
+                OpenVR.Init(ref dummyError, EVRApplicationType.VRApplication_Scene);
+                System.Threading.SpinWait.SpinUntil(() => OpenVR.IsHmdPresent(), TimeSpan.FromSeconds(10));
+                OpenVR.Shutdown();
+            }
 
             var initError = EVRInitError.None;
             _vrSystem = OpenVR.Init(ref initError, EVRApplicationType.VRApplication_Other);

@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.4] - 2021-12-23
+- Wait (with timeout) until SteamVR is ready at startup.
+
 ## [1.0.3] - 2021-12-17
 - Handle tracker role changes.
 

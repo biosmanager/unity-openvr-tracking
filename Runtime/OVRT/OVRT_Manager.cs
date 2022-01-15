@@ -3,6 +3,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.Events;
 using Valve.VR;
@@ -30,16 +31,27 @@ namespace OVRT
         public Dictionary<string, string> Bindings { get; set; } = new Dictionary<string, string>();
         public Dictionary<string, string> SteamVrTrackerBindings { get; private set; } = new Dictionary<string, string>();
 
+        private bool _isInitialized = false;
         private CVRSystem _vrSystem;
         private TrackedDevicePose_t[] _poses = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
         private UnityAction<int, bool> _onDeviceConnected;
+        private string _steamVrConfigPath = null;
 
 
         public Dictionary<string, string> GetSteamVrTrackerBindings()
         {
             Dictionary<string, string> trackerBindings = new Dictionary<string, string>();
-            
-            var steamVrSettingsPath = Path.Combine(OpenVR.RuntimePath(), "../../../config/steamvr.vrsettings");
+
+            string steamVrSettingsPath;
+            if (_steamVrConfigPath is null)
+            {
+                steamVrSettingsPath = Path.Combine(OpenVR.RuntimePath(), "../../../config/steamvr.vrsettings");
+            }
+            else
+            {
+                steamVrSettingsPath = Path.Combine(_steamVrConfigPath, "steamvr.vrsettings");
+            }
+
             if (!File.Exists(steamVrSettingsPath))
             {
                 Debug.LogWarning("[OVRT] Could not find SteamVR configuration file!");
@@ -124,6 +136,7 @@ namespace OVRT
             if (!OpenVR.IsRuntimeInstalled())
             {
                 Debug.LogError("[OVRT] SteamVR runtime not installed!");
+                return;
             }
 
             // Ensure SteamVR is running
@@ -143,6 +156,28 @@ namespace OVRT
                 var initErrorString = OpenVR.GetStringForHmdError(initError);
                 Debug.LogError($"[OVRT] Could not initialize OpenVR tracking: {initErrorString}");
                 return;
+            }
+
+            _isInitialized = true;
+
+            var openVrPathsConfigPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "openvr", "openvrpaths.vrpath");
+            if (File.Exists(openVrPathsConfigPath))
+            {
+                var json = File.ReadAllText(openVrPathsConfigPath);
+                var openVrPathsConfig = JObject.Parse(json);
+
+                if (openVrPathsConfig.ContainsKey("config"))
+                {
+                    var paths = openVrPathsConfig["config"].ToObject<List<string>>();
+                    if (paths.Count > 0)
+                    {
+                        _steamVrConfigPath = paths[0];
+                    }
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[OVRT] Could not find {openVrPathsConfigPath}!");
             }
 
             Debug.Log($"[OVRT] Initialized OpenVR tracking.");
@@ -194,6 +229,8 @@ namespace OVRT
 
         private void UpdatePoses()
         {
+            if (!_isInitialized) return;
+
             _vrSystem.GetDeviceToAbsoluteTrackingPose(trackingUniverse, 0.0f, _poses);
 
             // Process OpenVR event queue

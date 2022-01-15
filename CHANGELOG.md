@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.5] - 2022-01-15
+- Fix paths when config is in local appdata
+
 ## [1.0.4] - 2021-12-23
 - Wait (with timeout) until SteamVR is ready at startup.
 

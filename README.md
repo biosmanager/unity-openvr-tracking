@@ -9,7 +9,7 @@ SteamVR tracking for Unity without requiring an HMD to be present or fiddling wi
 
 ## Configuration
 
-Add `"requireHmd" : false` to the `steamvr` section of the SteamVR configuration file (`<Steam_Installation>/config/steamvr.vrsettings`). 
+Add `"requireHmd" : false` to the `steamvr` section of the SteamVR configuration file (`<Steam_Installation>/config/steamvr.vrsettings` or `<AppData>/Local/openvr/config/steamvr.vrsettings`). 
 
 ## Usage
 

@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.6] - 2022-03-14
+- Implement pose prediction
+
 ## [1.0.5] - 2022-01-15
 - Fix paths when config is in local appdata
 

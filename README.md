@@ -22,3 +22,7 @@ OVRT can also use tracker bindings from SteamVR. See `steamvr.vrsettings` for th
 
 You can not open the SteamVR tracker role UI when no HMD is connected. In this case you can either edit `steamvr.vrsettings` or use this tool:
 [SteamVR tracker role utility](https://github.com/biosmanager/steamvr-tracker-role-utility).
+
+## Pose prediction
+
+To predict poses into the future, one can adjust the `predictedSecondsToPhotonsFromNow` parameter of `OVRT_Manager`.

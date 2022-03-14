@@ -26,6 +26,7 @@ namespace OVRT
         public ETrackingUniverseOrigin trackingUniverse = ETrackingUniverseOrigin.TrackingUniverseStanding;
         public UpdateMode updateMode = UpdateMode.Update;
         public bool useSteamVrTrackerRoles = true;
+        public float predictedSecondsToPhotonsFromNow = 0.0f;
 
         public bool[] ConnectedDeviceIndices { get; private set; } = new bool[OpenVR.k_unMaxTrackedDeviceCount];
         public Dictionary<string, string> Bindings { get; set; } = new Dictionary<string, string>();
@@ -231,7 +232,7 @@ namespace OVRT
         {
             if (!_isInitialized) return;
 
-            _vrSystem.GetDeviceToAbsoluteTrackingPose(trackingUniverse, 0.0f, _poses);
+            _vrSystem.GetDeviceToAbsoluteTrackingPose(trackingUniverse, predictedSecondsToPhotonsFromNow, _poses);
 
             // Process OpenVR event queue
             var vrEvent = new VREvent_t();

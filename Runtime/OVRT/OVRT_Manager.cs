@@ -119,6 +119,7 @@ namespace OVRT
         private void Awake()
         {
             _onDeviceConnected += OnDeviceConnected;
+            Init();
         }
 
         private void OnEnable()
@@ -132,7 +133,7 @@ namespace OVRT
             Array.Clear(ConnectedDeviceIndices, 0, ConnectedDeviceIndices.Length);
         }
 
-        private void Start()
+        private void Init()
         {
             if (!OpenVR.IsRuntimeInstalled())
             {
@@ -250,6 +251,15 @@ namespace OVRT
                         // Allow some time until SteamVR configuration file has been updated on disk
                         Invoke("UpdateSteamVrTrackerBindings", 1.0f);
                         break;
+                    case EVREventType.VREvent_ShowRenderModels:
+                        OVRT_Events.HideRenderModelsChanged.Invoke(false);
+                        break;
+                    case EVREventType.VREvent_HideRenderModels:
+                        OVRT_Events.HideRenderModelsChanged.Invoke(true);
+                        break;
+                    case EVREventType.VREvent_ModelSkinSettingsHaveChanged:
+                        OVRT_Events.ModelSkinSettingsHaveChanged.Invoke();
+                        break;
                     default:
                         break;
                 }
@@ -287,6 +297,47 @@ namespace OVRT
             var trackerBindings = GetSteamVrTrackerBindings();
             SteamVrTrackerBindings = trackerBindings;
             OVRT_Events.TrackerRolesChanged.Invoke();
+        }
+
+        private static bool runningTemporarySession = false;
+        public static bool InitializeTemporarySession()
+        {
+            if (Application.isEditor)
+            {
+                //bool needsInit = (!active && !usingNativeSupport && !runningTemporarySession);
+
+                EVRInitError initError = EVRInitError.None;
+                OpenVR.GetGenericInterface(OpenVR.IVRCompositor_Version, ref initError);
+                bool needsInit = initError != EVRInitError.None;
+
+                if (needsInit)
+                {
+                    EVRInitError error = EVRInitError.None;
+                    OpenVR.Init(ref error, EVRApplicationType.VRApplication_Other);
+
+                    if (error != EVRInitError.None)
+                    {
+                        Debug.LogError("[OVRT] Could not initialize OpenVR tracking: " + error.ToString());
+                        return false;
+                    }
+
+                    runningTemporarySession = true;
+                }
+
+
+                return needsInit;
+            }
+
+            return false;
+        }
+
+        public static void ExitTemporarySession()
+        {
+            if (runningTemporarySession)
+            {
+                OpenVR.Shutdown();
+                runningTemporarySession = false;
+            }
         }
     }
 }

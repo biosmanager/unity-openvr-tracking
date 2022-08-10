@@ -13,5 +13,10 @@ namespace OVRT
         public static UnityEvent<string, TrackedDevicePose_t, int> NewBoundPose = new UnityEvent<string, TrackedDevicePose_t, int>();
 
         public static UnityEvent TrackerRolesChanged = new UnityEvent();
+
+        public static UnityEvent<bool> HideRenderModelsChanged = new UnityEvent<bool>();
+        public static UnityEvent ModelSkinSettingsHaveChanged = new UnityEvent();
+
+        public static UnityEvent<OVRT_RenderModel, bool> RenderModelLoaded = new UnityEvent<OVRT_RenderModel, bool>();
     }
 }

@@ -7,7 +7,7 @@ namespace OVRT
     /// <summary>
     /// Maps tracked OpenVR poses to transform by device index.
     /// </summary>
-    public class OVRT_TrackedObject : MonoBehaviour
+    public sealed class OVRT_TrackedObject : OVRT_TrackedDevice
     {
         public enum EIndex
         {
@@ -33,18 +33,14 @@ namespace OVRT
 
         public EIndex index;
         [Tooltip("If not set, relative to parent")]
-        public Transform origin;
-
-        public bool IsValid { get; private set; }
-        public bool IsConnected { get; private set; }  
 
         private UnityAction<TrackedDevicePose_t[]> _onNewPosesAction;
-        private UnityAction<int, bool> _onDeviceConnectedAction;
 
         private void OnDeviceConnected(int index, bool connected)
         {
             if ((int)this.index == index)
             {
+                DeviceIndex = index;
                 IsConnected = connected;
             }
         }
@@ -54,11 +50,11 @@ namespace OVRT
             if (index == EIndex.None)
                 return;
 
-            var i = (int)index;
+            var i = DeviceIndex;
 
             IsValid = false;
 
-            if (poses.Length <= i)
+            if (i < 0 || poses.Length <= i)
                 return;
 
             if (!poses[i].bDeviceIsConnected)

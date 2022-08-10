@@ -7,18 +7,12 @@ namespace OVRT
     /// <summary>
     /// Maps tracked OpenVR poses to transform by serial number bindings. Can use tracker roles defined by SteamVR.
     /// </summary>
-    public class OVRT_BoundTrackedObject : MonoBehaviour
+    public sealed class OVRT_BoundTrackedObject : OVRT_TrackedDevice
     {
         public string binding;
         [Tooltip("If not set, relative to parent")]
-        public Transform origin;
-
-        public int DeviceIndex { get; private set; } = -1;
-        public bool IsValid { get; private set; }
-        public bool IsConnected { get; private set; }
 
         private UnityAction<string, TrackedDevicePose_t, int> _onNewBoundPoseAction;
-        private UnityAction<int, bool> _onDeviceConnectedAction;
         private UnityAction _onTrackerRolesChanged;
 
         private void OnDeviceConnected(int index, bool connected)
@@ -36,7 +30,7 @@ namespace OVRT
 
             IsValid = false;
 
-            DeviceIndex = (int)deviceIndex;
+            DeviceIndex = deviceIndex;
             IsConnected = pose.bDeviceIsConnected;
 
             if (!pose.bDeviceIsConnected)

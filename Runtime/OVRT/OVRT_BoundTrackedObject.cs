@@ -30,7 +30,11 @@ namespace OVRT
 
             IsValid = false;
 
-            DeviceIndex = deviceIndex;
+            if (DeviceIndex != deviceIndex)
+            {
+                DeviceIndex = deviceIndex;
+                onDeviceIndexChanged.Invoke(DeviceIndex);
+            }
             IsConnected = pose.bDeviceIsConnected;
 
             if (!pose.bDeviceIsConnected)

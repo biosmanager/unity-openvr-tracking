@@ -16,6 +16,8 @@ namespace OVRT
     [ExecuteInEditMode]
     public class OVRT_RenderModel : MonoBehaviour
     {
+        public OVRT_TrackedDevice trackedDevice;
+
         public OVRT_TrackedObject.EIndex index = OVRT_TrackedObject.EIndex.None;
         //protected SteamVR_Input_Sources inputSource;
 
@@ -141,6 +143,11 @@ namespace OVRT
             {
                 UpdateModel();
             }
+        }
+
+        private void OnTrackedDeviceIndexChanged(int i)
+        {
+            SetDeviceIndex(i);
         }
 
         public void UpdateModel()
@@ -664,6 +671,17 @@ namespace OVRT
                 return;
             }
 
+            if (trackedDevice == null)
+            {
+                trackedDevice = this.gameObject.GetComponent<OVRT_TrackedDevice>();
+            }
+
+            if (trackedDevice != null)
+            {
+                SetDeviceIndex(trackedDevice.DeviceIndex);
+                trackedDevice.onDeviceIndexChanged.AddListener(OnTrackedDeviceIndexChanged);
+            }
+
             OVRT_Events.TrackedDeviceConnected.AddListener(_onDeviceConnectedAction);
             OVRT_Events.HideRenderModelsChanged.AddListener(_onHideRenderModelsAction);
             OVRT_Events.ModelSkinSettingsHaveChanged.AddListener(_onModelSkinSettingsHaveChanged);
@@ -675,6 +693,12 @@ namespace OVRT
             if (!Application.isPlaying)
                 return;
 #endif
+
+            if (trackedDevice != null)
+            {
+                trackedDevice.onDeviceIndexChanged.RemoveListener(OnTrackedDeviceIndexChanged);
+            }
+
             OVRT_Events.TrackedDeviceConnected.RemoveListener(_onDeviceConnectedAction);
             OVRT_Events.HideRenderModelsChanged.RemoveListener(_onHideRenderModelsAction);
             OVRT_Events.ModelSkinSettingsHaveChanged.RemoveListener(_onModelSkinSettingsHaveChanged);

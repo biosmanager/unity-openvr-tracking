@@ -42,6 +42,8 @@ namespace OVRT
             {
                 DeviceIndex = index;
                 IsConnected = connected;
+
+                onDeviceIndexChanged.Invoke(DeviceIndex);
             }
         }
 
@@ -87,6 +89,9 @@ namespace OVRT
 
         private void OnEnable()
         {
+            DeviceIndex = (int)index;
+            onDeviceIndexChanged.Invoke(DeviceIndex);
+
             OVRT_Events.NewPoses.AddListener(_onNewPosesAction);
             OVRT_Events.TrackedDeviceConnected.AddListener(_onDeviceConnectedAction);
         }

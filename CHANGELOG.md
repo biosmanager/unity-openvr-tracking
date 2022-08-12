@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.1.0] - 2022-08-12
+- Implement render models
+- Fix wrong .obj model centers in SteamVR for Vive Trackers 1.0/3.0
+
 ## [1.0.6] - 2022-03-14
 - Implement pose prediction
 

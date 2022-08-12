@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1797566019642362758}
   - component: {fileID: 1797566019642362757}
+  - component: {fileID: 5353007411311027802}
   m_Layer: 0
   m_Name: OVRT_BoundTrackedObject
   m_TagString: Untagged
@@ -27,6 +28,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
@@ -43,5 +45,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 91789b0f6c11f9e40bd2609c06cc4c97, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  binding: 
   origin: {fileID: 0}
+  onDeviceIndexChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  binding: 
+--- !u!114 &5353007411311027802
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1797566019642362759}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a62592f325851ee4c9d51f921d5c9929, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  trackedDevice: {fileID: 0}
+  index: -1
+  modelOverride: 
+  shader: {fileID: 0}
+  verbose: 0
+  createComponents: 1
+  updateDynamically: 1

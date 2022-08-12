@@ -15,6 +15,7 @@ Add `"requireHmd" : false` to the `steamvr` section of the SteamVR configuration
 
 1. Attach the `OVRT_Manager` script to a GameObject.
 2. Attach either `OVRT_TrackedObject` or `OVRT_BoundTrackedObject` to a GameObject you want to track.
+3. Attach `OVRT_RenderModel` to display the tracked device (e.g. Vive Tracker).
 
 Bindings map the serial number of a tracked device to a string. Any bound tracked object with that string receives poses from the mapped tracked device. Bindings can be assigned by using the `Bindings` property of `OVRT_Manager`.
 
@@ -26,3 +27,8 @@ You can not open the SteamVR tracker role UI when no HMD is connected. In this c
 ## Pose prediction
 
 To predict poses into the future, one can adjust the `predictedSecondsToPhotonsFromNow` parameter of `OVRT_Manager`.
+
+## Wrong .obj model center fix
+
+The mesh that comes with SteamVR for the Vive Tracker 1.0/3.0 has a wrong center that does not correspond to the origin of the coordinate system from the Vive developer guidelines. `OVRT_RenderModel` automatically applies a translation of 7.3 and 8 mm respectively. You can turn this off.
+

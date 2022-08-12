@@ -1,8 +1,5 @@
-//======= Copyright (c) Valve Corporation, All rights reserved. ===============
-//
-// Purpose: Render model of associated tracked object
-//
-//=============================================================================
+// Based on SteamVR_RenderModel.cs supplied with the SteamVR Unity plugin (https://github.com/ValveSoftware/steamvr_unity_plugin/blob/master/Assets/SteamVR/Scripts/SteamVR_RenderModel.cs)
+// Originally released under BSD 3-Clause "New" or "Revised" License
 
 using UnityEngine;
 using System.Collections;
@@ -39,6 +36,9 @@ namespace OVRT
 
         [Tooltip("Update transforms of components at runtime to reflect user action.")]
         public bool updateDynamically = true;
+
+        [Tooltip("Fix the wrong obj center of Vive Tracker 1.0 and 3.0 models that does not correspond to the tracing coordinate system from the developer guidelines.")]
+        public bool fixTrackerModelCenter = true;
 
         // Additional controller settings for showing scrollwheel, etc.
         public RenderModel_ControllerMode_State_t controllerModeState;
@@ -603,6 +603,19 @@ namespace OVRT
                 t.localPosition = Vector3.zero;
                 t.localRotation = Quaternion.identity;
                 t.localScale = Vector3.one;
+
+                // Fix for wrong obj center for trackers in SteamVR
+                if (fixTrackerModelCenter)
+                {
+                    if (renderModelName == "{htc}vr_tracker_vive_1_0" && componentName == "body")
+                    {
+                        t.Translate(new Vector3(0, 0, 0.0073f), Space.Self);
+                    }
+                    if (renderModelName == "{htc}vr_tracker_vive_3_0" && componentName == "body")
+                    {
+                        t.Translate(new Vector3(0, 0, 0.008f), Space.Self);
+                    }
+                }
 
                 capacity = renderModels.GetComponentRenderModelName(renderModelName, componentName, null, 0);
                 if (capacity == 0)

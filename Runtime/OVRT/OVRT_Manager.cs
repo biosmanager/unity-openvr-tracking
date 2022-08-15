@@ -2,11 +2,14 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.Events;
 using Valve.VR;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace OVRT
 {
@@ -33,10 +36,16 @@ namespace OVRT
         public Dictionary<string, string> SteamVrTrackerBindings { get; private set; } = new Dictionary<string, string>();
 
         private bool _isInitialized = false;
-        private CVRSystem _vrSystem;
+
         private TrackedDevicePose_t[] _poses = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
         private UnityAction<int, bool> _onDeviceConnected;
         private string _steamVrConfigPath = null;
+
+        private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+        private Task _task;
+        private ConcurrentQueue<VREvent_t> _eventQueue = new ConcurrentQueue<VREvent_t>();
+        private CVRSystem _vrSystem;
+        private double _currentSamplesPerSecond;
 
 
         public Dictionary<string, string> GetSteamVrTrackerBindings()
@@ -105,11 +114,11 @@ namespace OVRT
         public string GetStringProperty(ETrackedDeviceProperty prop, uint deviceId)
         {
             var error = ETrackedPropertyError.TrackedProp_Success;
-            var capacity = _vrSystem.GetStringTrackedDeviceProperty(deviceId, prop, null, 0, ref error);
+            var capacity = OpenVR.System.GetStringTrackedDeviceProperty(deviceId, prop, null, 0, ref error);
             if (capacity > 1)
             {
                 var result = new System.Text.StringBuilder((int)capacity);
-                _vrSystem.GetStringTrackedDeviceProperty(deviceId, prop, result, capacity, ref error);
+                OpenVR.System.GetStringTrackedDeviceProperty(deviceId, prop, result, capacity, ref error);
                 return result.ToString();
             }
             return (error != ETrackedPropertyError.TrackedProp_Success) ? error.ToString() : "<unknown>";
@@ -119,7 +128,23 @@ namespace OVRT
         private void Awake()
         {
             _onDeviceConnected += OnDeviceConnected;
-            Init();
+
+            var token = cancellationTokenSource.Token;
+
+            _task = Task.Run(async () =>
+            {
+                Init();
+
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+
+                while (!token.IsCancellationRequested)
+                {
+                    PollPosesAndEvents();
+
+                    _currentSamplesPerSecond = 1000.0 / sw.Elapsed.TotalMilliseconds;
+                    sw.Restart();
+                }
+            }, token);
         }
 
         private void OnEnable()
@@ -146,7 +171,7 @@ namespace OVRT
             {
                 var dummyError = EVRInitError.None;
                 OpenVR.Init(ref dummyError, EVRApplicationType.VRApplication_Scene);
-                System.Threading.SpinWait.SpinUntil(() => OpenVR.IsHmdPresent(), TimeSpan.FromSeconds(10));
+                SpinWait.SpinUntil(() => OpenVR.IsHmdPresent(), TimeSpan.FromSeconds(10));
                 OpenVR.Shutdown();
             }
 
@@ -229,15 +254,25 @@ namespace OVRT
             ConnectedDeviceIndices[index] = connected;
         }
 
+        // Runs in task
+        private void PollPosesAndEvents()
+        {
+            _vrSystem.GetDeviceToAbsoluteTrackingPose(trackingUniverse, predictedSecondsToPhotonsFromNow, _poses);
+
+            var vrEvent = new VREvent_t();
+            while (_vrSystem.PollNextEvent(ref vrEvent, (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(VREvent_t))))
+            {
+                _eventQueue.Enqueue(vrEvent);   
+            }
+        }
+
         private void UpdatePoses()
         {
             if (!_isInitialized) return;
 
-            _vrSystem.GetDeviceToAbsoluteTrackingPose(trackingUniverse, predictedSecondsToPhotonsFromNow, _poses);
-
             // Process OpenVR event queue
-            var vrEvent = new VREvent_t();
-            while (_vrSystem.PollNextEvent(ref vrEvent, (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(VREvent_t))))
+            VREvent_t vrEvent;
+            while (_eventQueue.TryDequeue(out vrEvent))
             {
                 switch ((EVREventType)vrEvent.eventType)
                 {

@@ -26,10 +26,12 @@ namespace OVRT
             OnPreCull
         }
 
+        public bool useTask = true;
         public ETrackingUniverseOrigin trackingUniverse = ETrackingUniverseOrigin.TrackingUniverseStanding;
         public UpdateMode updateMode = UpdateMode.Update;
         public bool useSteamVrTrackerRoles = true;
         public float predictedSecondsToPhotonsFromNow = 0.0f;
+        public uint taskDelayMs = 1;
 
         public bool[] ConnectedDeviceIndices { get; private set; } = new bool[OpenVR.k_unMaxTrackedDeviceCount];
         public Dictionary<string, string> Bindings { get; set; } = new Dictionary<string, string>();
@@ -37,14 +39,16 @@ namespace OVRT
 
         private bool _isInitialized = false;
 
-        private TrackedDevicePose_t[] _poses = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
         private UnityAction<int, bool> _onDeviceConnected;
         private string _steamVrConfigPath = null;
 
-        private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+        private bool _useTask;
+        private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private Task _task;
-        private ConcurrentQueue<VREvent_t> _eventQueue = new ConcurrentQueue<VREvent_t>();
+        private HashSet<ConcurrentQueue<VREvent_t>> _eventQueues = new HashSet<ConcurrentQueue<VREvent_t>>();
+        private ConcurrentQueue<VREvent_t> _managerEventQueue = new ConcurrentQueue<VREvent_t>();
         private CVRSystem _vrSystem;
+        private TrackedDevicePose_t[] _poses = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
         private double _currentSamplesPerSecond;
 
 
@@ -128,23 +132,37 @@ namespace OVRT
         private void Awake()
         {
             _onDeviceConnected += OnDeviceConnected;
+            _useTask = useTask;
 
-            var token = cancellationTokenSource.Token;
+            RegisterEventQueue(_managerEventQueue);
 
-            _task = Task.Run(async () =>
+            if (_useTask)
+            {
+                var token = _cancellationTokenSource.Token;
+                
+                _task = Task.Run(async () =>
+                {
+                    Init();
+
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+
+                    while (!token.IsCancellationRequested)
+                    {
+                        PollPosesAndEvents();
+
+                        await Task.Delay((int)Math.Max(0, taskDelayMs));
+
+                        _currentSamplesPerSecond = 1000.0 / sw.Elapsed.TotalMilliseconds;
+                        sw.Restart();
+                    }
+
+                    OpenVR.Shutdown();
+                }, token);
+            }
+            else
             {
                 Init();
-
-                var sw = System.Diagnostics.Stopwatch.StartNew();
-
-                while (!token.IsCancellationRequested)
-                {
-                    PollPosesAndEvents();
-
-                    _currentSamplesPerSecond = 1000.0 / sw.Elapsed.TotalMilliseconds;
-                    sw.Restart();
-                }
-            }, token);
+            }
         }
 
         private void OnEnable()
@@ -214,6 +232,9 @@ namespace OVRT
 
         private void OnDestroy()
         {
+            _cancellationTokenSource?.Cancel();
+            _task?.Wait();
+
             OpenVR.Shutdown();
         }
 
@@ -254,7 +275,22 @@ namespace OVRT
             ConnectedDeviceIndices[index] = connected;
         }
 
-        // Runs in task
+        public void RegisterEventQueue(ConcurrentQueue<VREvent_t> queue)
+        {
+            lock (_eventQueues)
+            {
+                _eventQueues.Add(queue);
+            }
+        }
+
+        public void DeregisterEventQueue(ConcurrentQueue<VREvent_t> queue)
+        {
+            lock (_eventQueues)
+            {
+                _eventQueues.Remove(queue);
+            }
+        }
+
         private void PollPosesAndEvents()
         {
             _vrSystem.GetDeviceToAbsoluteTrackingPose(trackingUniverse, predictedSecondsToPhotonsFromNow, _poses);
@@ -262,17 +298,42 @@ namespace OVRT
             var vrEvent = new VREvent_t();
             while (_vrSystem.PollNextEvent(ref vrEvent, (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(VREvent_t))))
             {
-                _eventQueue.Enqueue(vrEvent);   
+                lock (_eventQueues)
+                {
+                    foreach (var eventQueue in _eventQueues)
+                    {
+                        eventQueue.Enqueue(vrEvent);   
+                    }
+                }
             }
+        }
+
+        public TrackedDevicePose_t[] GetPoses()
+        {
+            var poses = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
+
+            lock(_poses)
+            {
+                _poses.CopyTo(poses, 0);
+            }
+
+            return poses;
         }
 
         private void UpdatePoses()
         {
             if (!_isInitialized) return;
 
+            if (!_useTask)
+            {
+                PollPosesAndEvents();
+            }
+
+            var poses = GetPoses();
+
             // Process OpenVR event queue
             VREvent_t vrEvent;
-            while (_eventQueue.TryDequeue(out vrEvent))
+            while (_managerEventQueue.TryDequeue(out vrEvent))
             {
                 switch ((EVREventType)vrEvent.eventType)
                 {
@@ -300,7 +361,7 @@ namespace OVRT
                 }
             }
 
-            OVRT_Events.NewPoses.Invoke(_poses);
+            OVRT_Events.NewPoses.Invoke(poses);
 
             for (uint i = 0; i < _poses.Length; i++)
             {

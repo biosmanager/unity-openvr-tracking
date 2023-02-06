@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.1.1] - 2023-02-06
+- Add Newtonsoft JSON dependency
+
 ## [1.1.0] - 2022-08-12
 - Implement render models
 - Fix wrong .obj model centers in SteamVR for Vive Trackers 1.0/3.0

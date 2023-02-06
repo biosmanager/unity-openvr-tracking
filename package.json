@@ -1,13 +1,14 @@
 {
     "name": "com.biosmanager.unity-openvr-tracking",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "displayName": "OpenVR Tracking",
     "description": "OpenVR tracking for Unity without hassles",
     "unity": "2019.4",
     "unityRelease": "33f1",
     "documentationUrl": "https://github.com/biosmanager/unity-openvr-tracking",
     "dependencies": {
-        "com.valvesoftware.unity.openvr": "1.1.4"
+        "com.valvesoftware.unity.openvr": "1.1.4",
+        "com.unity.nuget.newtonsoft-json": "3.0.2"
     },
     "keywords": [
         "openvr",

@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.1.2] - 2023-03-10
+- Fix crash when running together with another SteamVR instance in the same Unity application
+
 ## [1.1.1] - 2023-02-06
 - Add Newtonsoft JSON dependency
 

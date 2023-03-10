@@ -233,8 +233,6 @@ namespace OVRT
         {
             if (!_isInitialized) return;
 
-            _vrSystem.GetDeviceToAbsoluteTrackingPose(trackingUniverse, predictedSecondsToPhotonsFromNow, _poses);
-
             // Process OpenVR event queue
             var vrEvent = new VREvent_t();
             while (_vrSystem.PollNextEvent(ref vrEvent, (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(VREvent_t))))
@@ -260,11 +258,16 @@ namespace OVRT
                     case EVREventType.VREvent_ModelSkinSettingsHaveChanged:
                         OVRT_Events.ModelSkinSettingsHaveChanged.Invoke();
                         break;
+                    case EVREventType.VREvent_Quit:
+                    case EVREventType.VREvent_ProcessQuit:
+                    case EVREventType.VREvent_DriverRequestedQuit:
+                        return;
                     default:
                         break;
                 }
             }
 
+            _vrSystem.GetDeviceToAbsoluteTrackingPose(trackingUniverse, predictedSecondsToPhotonsFromNow, _poses);
             OVRT_Events.NewPoses.Invoke(_poses);
 
             for (uint i = 0; i < _poses.Length; i++)

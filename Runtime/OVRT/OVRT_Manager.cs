@@ -245,6 +245,15 @@ namespace OVRT
                     case EVREventType.VREvent_TrackedDeviceDeactivated:
                         OVRT_Events.TrackedDeviceConnected.Invoke((int)vrEvent.trackedDeviceIndex, false);
                         break;
+                    case EVREventType.VREvent_TrackedDeviceRoleChanged:
+                        OVRT_Events.TrackedDeviceRoleChanged.Invoke((int)vrEvent.trackedDeviceIndex);
+                        break;
+                    case EVREventType.VREvent_ButtonPress:
+                        OVRT_Events.ButtonPressed.Invoke((int)vrEvent.trackedDeviceIndex, (EVRButtonId)vrEvent.data.controller.button, true);
+                        break;
+                    case EVREventType.VREvent_ButtonUnpress:
+                        OVRT_Events.ButtonPressed.Invoke((int)vrEvent.trackedDeviceIndex, (EVRButtonId)vrEvent.data.controller.button, false);
+                        break;
                     case EVREventType.VREvent_TrackersSectionSettingChanged:
                         // Allow some time until SteamVR configuration file has been updated on disk
                         Invoke("UpdateSteamVrTrackerBindings", 1.0f);

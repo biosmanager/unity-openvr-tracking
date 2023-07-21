@@ -6,6 +6,8 @@ using System.IO;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.LowLevel;
+using UnityEngine.PlayerLoop;
 using Valve.VR;
 
 namespace OVRT
@@ -24,9 +26,9 @@ namespace OVRT
         }
 
         public ETrackingUniverseOrigin trackingUniverse = ETrackingUniverseOrigin.TrackingUniverseStanding;
-        public UpdateMode updateMode = UpdateMode.Update;
+        public uint displayFrequency = 90;
+        public float vsyncToPhotonsSeconds = 0.03f; 
         public bool useSteamVrTrackerRoles = true;
-        public float predictedSecondsToPhotonsFromNow = 0.0f;
 
         public bool[] ConnectedDeviceIndices { get; private set; } = new bool[OpenVR.k_unMaxTrackedDeviceCount];
         public Dictionary<string, string> Bindings { get; set; } = new Dictionary<string, string>();
@@ -124,11 +126,13 @@ namespace OVRT
 
         private void OnEnable()
         {
+            Application.onBeforeRender += OnBeforeRender;
             OVRT_Events.TrackedDeviceConnected.AddListener(_onDeviceConnected);
         }
 
         private void OnDisable()
         {
+            Application.onBeforeRender -= OnBeforeRender;
             OVRT_Events.TrackedDeviceConnected.RemoveListener(_onDeviceConnected);
             Array.Clear(ConnectedDeviceIndices, 0, ConnectedDeviceIndices.Length);
         }
@@ -192,36 +196,19 @@ namespace OVRT
             OpenVR.Shutdown();
         }
 
-        private void FixedUpdate()
-        {
-            if (updateMode == UpdateMode.FixedUpdate)
-            {
-                UpdatePoses();
-            }
-        }
-
         private void Update()
         {
-            if (updateMode == UpdateMode.Update)
-            {
-                UpdatePoses();
-            }
+            Tick();
         }
 
-        private void LateUpdate()
+        private void OnBeforeRender()
         {
-            if (updateMode == UpdateMode.LateUpdate)
-            {
-                UpdatePoses();
-            }
-        }
+            float secondsSinceLastVsync = Time.realtimeSinceStartup - lastVsyncTimestamp;
+            float frameDuration = 1f / displayFrequency;
+            float secondsFromNow = Mathf.Max(0, frameDuration - secondsSinceLastVsync) + vsyncToPhotonsSeconds;
+            UpdatePoses(secondsFromNow);
 
-        private void OnPreCull()
-        {
-            if (updateMode == UpdateMode.OnPreCull)
-            {
-                UpdatePoses();
-            }
+            Debug.Log($"{frameDuration} - {secondsSinceLastVsync} + {vsyncToPhotonsSeconds} = {secondsFromNow}");
         }
 
         private void OnDeviceConnected(int index, bool connected)
@@ -229,7 +216,7 @@ namespace OVRT
             ConnectedDeviceIndices[index] = connected;
         }
 
-        private void UpdatePoses()
+        private void Tick()
         {
             if (!_isInitialized) return;
 
@@ -275,6 +262,13 @@ namespace OVRT
                         break;
                 }
             }
+
+            UpdatePoses(0);
+        }
+
+        private void UpdatePoses(float predictedSecondsToPhotonsFromNow)
+        {
+            if (!_isInitialized) return;
 
             _vrSystem.GetDeviceToAbsoluteTrackingPose(trackingUniverse, predictedSecondsToPhotonsFromNow, _poses);
             OVRT_Events.NewPoses.Invoke(_poses);
@@ -351,5 +345,50 @@ namespace OVRT
                 runningTemporarySession = false;
             }
         }
+
+        [RuntimeInitializeOnLoadMethod]
+        private static void AddPostVsyncCallback()
+        {
+            var defaultSystems = PlayerLoop.GetDefaultPlayerLoop();
+
+            var updateVsyncTimestampSystem = new PlayerLoopSystem
+            {
+                subSystemList = null,
+                updateDelegate = UpdateVsyncTimestamp,
+                type = typeof(UpdateVsyncTimestamp)
+            };
+
+
+            PlayerLoopSystem newPlayerLoop = new()
+            {
+                loopConditionFunction = defaultSystems.loopConditionFunction,
+                type = defaultSystems.type,
+                updateDelegate = defaultSystems.updateDelegate,
+                updateFunction = defaultSystems.updateFunction
+            };
+
+            List<PlayerLoopSystem> newSubSystemList = new();
+
+            foreach (var subSystem in defaultSystems.subSystemList)
+            {
+                newSubSystemList.Add(subSystem);
+
+                if (subSystem.type == typeof(TimeUpdate))
+                    newSubSystemList.Add(updateVsyncTimestampSystem);
+            }
+
+            newPlayerLoop.subSystemList = newSubSystemList.ToArray();
+
+            PlayerLoop.SetPlayerLoop(newPlayerLoop);
+        }
+
+        private static void UpdateVsyncTimestamp()
+        {
+            lastVsyncTimestamp = Time.realtimeSinceStartup;
+        }
+
+        private static float lastVsyncTimestamp = 0;
     }
+
+    public class UpdateVsyncTimestamp { }
 }

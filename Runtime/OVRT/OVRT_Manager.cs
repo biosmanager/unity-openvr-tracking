@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 using UnityEngine;
+using UnityEngine.Assertions;
 using UnityEngine.Events;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
@@ -27,6 +28,8 @@ namespace OVRT
 
         public ETrackingUniverseOrigin trackingUniverse = ETrackingUniverseOrigin.TrackingUniverseStanding;
         public uint displayFrequency = 90;
+        public bool usePosePrediction = true;
+        public bool doUpdatePosesBeforeRendering = true;
         public float vsyncToPhotonsSeconds = 0.03f; 
         public bool useSteamVrTrackerRoles = true;
 
@@ -203,12 +206,20 @@ namespace OVRT
 
         private void OnBeforeRender()
         {
-            float secondsSinceLastVsync = Time.realtimeSinceStartup - lastVsyncTimestamp;
-            float frameDuration = 1f / displayFrequency;
-            float secondsFromNow = Mathf.Max(0, frameDuration - secondsSinceLastVsync) + vsyncToPhotonsSeconds;
-            UpdatePoses(secondsFromNow);
+            if (doUpdatePosesBeforeRendering)
+            {
+                if (displayFrequency < 1)
+                {
+                    Debug.LogError("[OVRT] Display frequency must be greater than 0! Pose prediction invalid!");
+                }
 
-            Debug.Log($"{frameDuration} - {secondsSinceLastVsync} + {vsyncToPhotonsSeconds} = {secondsFromNow}");
+                float secondsSinceLastVsync = Time.realtimeSinceStartup - lastVsyncTimestamp;
+                float frameDuration = 1f / Math.Max(displayFrequency, 1);
+                float secondsFromNow = Mathf.Max(0, frameDuration - secondsSinceLastVsync) + vsyncToPhotonsSeconds;
+                UpdatePoses(secondsFromNow);
+            }
+
+            //Debug.Log($"{frameDuration} - {secondsSinceLastVsync} + {vsyncToPhotonsSeconds} = {secondsFromNow}");
         }
 
         private void OnDeviceConnected(int index, bool connected)
@@ -270,7 +281,7 @@ namespace OVRT
         {
             if (!_isInitialized) return;
 
-            _vrSystem.GetDeviceToAbsoluteTrackingPose(trackingUniverse, predictedSecondsToPhotonsFromNow, _poses);
+            _vrSystem.GetDeviceToAbsoluteTrackingPose(trackingUniverse, usePosePrediction ? predictedSecondsToPhotonsFromNow : 0f, _poses);
             OVRT_Events.NewPoses.Invoke(_poses);
 
             for (uint i = 0; i < _poses.Length; i++)

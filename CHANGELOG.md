@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.1.3] - 2023-08-16
+- Implement pose prediction
+
 ## [1.1.2] - 2023-03-10
 - Fix crash when running together with another SteamVR instance in the same Unity application
 

@@ -27,7 +27,7 @@ namespace OVRT
         }
 
         public ETrackingUniverseOrigin trackingUniverse = ETrackingUniverseOrigin.TrackingUniverseStanding;
-        public uint displayFrequency = 90;
+        public float displayFrequency = 0f;
         public bool usePosePrediction = true;
         public bool doUpdatePosesBeforeRendering = true;
         public float vsyncToPhotonsSeconds = 0.03f; 
@@ -194,6 +194,14 @@ namespace OVRT
             UpdateSteamVrTrackerBindings();
         }
 
+        private void Start()
+        {
+            if (doUpdatePosesBeforeRendering && QualitySettings.vSyncCount == 0)
+            {
+                Debug.LogWarning("Pose prediction requires vertical synchronization for sensible prediction results. Set QualitySettings.vSyncCount to 1 or higher.");
+            }
+        }
+
         private void OnDestroy()
         {
             OpenVR.Shutdown();
@@ -208,9 +216,9 @@ namespace OVRT
         {
             if (doUpdatePosesBeforeRendering)
             {
-                if (displayFrequency < 1)
+                if (displayFrequency <= 0)
                 {
-                    Debug.LogError("[OVRT] Display frequency must be greater than 0! Pose prediction invalid!");
+                    displayFrequency = (float)Screen.currentResolution.refreshRateRatio.value;
                 }
 
                 float secondsSinceLastVsync = Time.realtimeSinceStartup - lastVsyncTimestamp;

@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.1.4] - 2023-10-12
+- Use vertical refresh rate when setting display frequency to 0
+
 ## [1.1.3] - 2023-08-16
 - Implement pose prediction
 

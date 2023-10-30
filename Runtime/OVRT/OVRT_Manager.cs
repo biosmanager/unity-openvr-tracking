@@ -317,6 +317,17 @@ namespace OVRT
             }
         }
 
+        private void PredictPoses(TrackedDevicePose_t[] poses, float deltaSec, out TrackedDevicePose_t[] predicedPoses) 
+        {
+            if (!_isInitialized) return;
+
+            predicedPoses = new TrackedDevicePose_t[poses.Length];
+            
+            for (uint i = 0; i < _poses.Length; i++) {
+                
+            }
+        }
+
         private void UpdateSteamVrTrackerBindings()
         {
             var trackerBindings = GetSteamVrTrackerBindings();

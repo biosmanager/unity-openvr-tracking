@@ -3,6 +3,8 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.Assertions;
@@ -26,12 +28,24 @@ namespace OVRT
             OnPreCull
         }
 
+        public enum PosePredictionAlgorithm
+        {
+            OpenVR,
+            LinearNoAcc
+        }
+
         public ETrackingUniverseOrigin trackingUniverse = ETrackingUniverseOrigin.TrackingUniverseStanding;
         public float displayFrequency = 0f;
         public bool usePosePrediction = true;
+        public PosePredictionAlgorithm posePredictionAlgorithm;
         public bool doUpdatePosesBeforeRendering = true;
-        public float vsyncToPhotonsSeconds = 0.03f; 
+        public float vsyncToPhotonsSeconds = 0.03f;
         public bool useSteamVrTrackerRoles = true;
+
+        [Header("Debug")]
+        /*[SerializeField]*/ private bool debug_doComparePoses = false;
+        /*[SerializeField]*/ private int debug_numPosesToCompare = 5000;
+        /*[SerializeField]*/ private int debug_deviceIndexToCompare = 1;
 
         public bool[] ConnectedDeviceIndices { get; private set; } = new bool[OpenVR.k_unMaxTrackedDeviceCount];
         public Dictionary<string, string> Bindings { get; set; } = new Dictionary<string, string>();
@@ -40,8 +54,13 @@ namespace OVRT
         private bool _isInitialized = false;
         private CVRSystem _vrSystem;
         private TrackedDevicePose_t[] _poses = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
+        private TrackedDevicePose_t[] _predictedPosesOpenVR = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
+        private TrackedDevicePose_t[] _predictedPoses = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
         private UnityAction<int, bool> _onDeviceConnected;
         private string _steamVrConfigPath = null;
+
+        private List<Tuple<Vector3, Quaternion, bool>> _debug_poseComparisons = new List<Tuple<Vector3, Quaternion, bool>>();
+        private bool _debug_poseComparisonsWereWritten = false;
 
 
         public Dictionary<string, string> GetSteamVrTrackerBindings()
@@ -72,7 +91,7 @@ namespace OVRT
                 var trackers = steamVrSettings["trackers"].ToObject<Dictionary<string, string>>();
                 foreach (var pair in trackers)
                 {
-                    trackerBindings.Add(pair.Key.Replace("/devices/htc/vive_tracker", ""), pair.Value);    
+                    trackerBindings.Add(pair.Key.Replace("/devices/htc/vive_tracker", ""), pair.Value);
                 }
             }
 
@@ -106,7 +125,7 @@ namespace OVRT
                 return false;
             }
         }
-  
+
         public string GetStringProperty(ETrackedDeviceProperty prop, uint deviceId)
         {
             var error = ETrackedPropertyError.TrackedProp_Success;
@@ -225,6 +244,7 @@ namespace OVRT
                 float frameDuration = 1f / Math.Max(displayFrequency, 1);
                 float secondsFromNow = Mathf.Max(0, frameDuration - secondsSinceLastVsync) + vsyncToPhotonsSeconds;
                 UpdatePoses(secondsFromNow);
+                //Debug_ComparePredictedPoses(secondsFromNow);
             }
 
             //Debug.Log($"{frameDuration} - {secondsSinceLastVsync} + {vsyncToPhotonsSeconds} = {secondsFromNow}");
@@ -285,11 +305,80 @@ namespace OVRT
             UpdatePoses(0);
         }
 
+        private void Debug_ComparePredictedPoses(float predictedSecondsToPhotonsFromNow)
+        {
+            if (!debug_doComparePoses || _debug_poseComparisonsWereWritten) return;
+
+            var poseDifferences = ComparePoses(_predictedPosesOpenVR, _predictedPoses);
+
+            _debug_poseComparisons.Add(poseDifferences[debug_deviceIndexToCompare]);
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"{predictedSecondsToPhotonsFromNow} delta");
+
+            for (int i = 0; i < poseDifferences.Count; i++)
+            {
+                var (posDiff, rotDiff, valid) = poseDifferences[i];
+
+                if (!valid) continue;
+
+                sb.AppendLine($"{_vrSystem.GetTrackedDeviceClass((uint)i)} [{i}]: {posDiff.magnitude} {rotDiff.eulerAngles}");
+            }
+
+            Debug.Log(sb.ToString());
+
+            if (_debug_poseComparisons.Count >= debug_numPosesToCompare)
+            {
+
+                var output = _debug_poseComparisons.Select(t =>
+                {
+                    var diffRot = t.Item2.eulerAngles;
+                    var row = string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}",
+                        t.Item1.x,
+                        t.Item1.y,
+                        t.Item1.z,
+                        t.Item2.w,
+                        t.Item2.x,
+                        t.Item2.y,
+                        t.Item2.z,
+                        diffRot.x,
+                        diffRot.y,
+                        diffRot.z
+                    );
+                    return row;
+                }).ToList();
+                output.Insert(0, "diffPosX,diffPosY,diffPosZ,diffQuatW,diffQuatX,diffQuatY,diffQuatZ,diffRotX,diffRotY,diffRotZ");
+                File.WriteAllLines("diffs.csv", output);
+                _debug_poseComparisonsWereWritten = true;
+                Debug.Log("Wrote diffs");
+            }
+        }
+
         private void UpdatePoses(float predictedSecondsToPhotonsFromNow)
         {
             if (!_isInitialized) return;
 
-            _vrSystem.GetDeviceToAbsoluteTrackingPose(trackingUniverse, usePosePrediction ? predictedSecondsToPhotonsFromNow : 0f, _poses);
+            if (debug_doComparePoses || posePredictionAlgorithm == PosePredictionAlgorithm.OpenVR)
+            {
+                _vrSystem.GetDeviceToAbsoluteTrackingPose(trackingUniverse, usePosePrediction ? predictedSecondsToPhotonsFromNow : 0f, _predictedPosesOpenVR);
+                _poses = _predictedPosesOpenVR;
+            }
+            if (debug_doComparePoses || posePredictionAlgorithm == PosePredictionAlgorithm.LinearNoAcc)
+            {
+                var currentPoses = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
+                _vrSystem.GetDeviceToAbsoluteTrackingPose(trackingUniverse, 0f, currentPoses);
+
+                if (usePosePrediction)
+                {
+                    PredictPoses(currentPoses, predictedSecondsToPhotonsFromNow, out _predictedPoses);
+                    _poses = _predictedPoses;
+                }
+                else
+                {
+                    _poses = currentPoses;
+                }
+            }
+
             OVRT_Events.NewPoses.Invoke(_poses);
 
             for (uint i = 0; i < _poses.Length; i++)
@@ -317,14 +406,68 @@ namespace OVRT
             }
         }
 
+        private static List<Tuple<Vector3, Quaternion, bool>> ComparePoses(TrackedDevicePose_t[] posesA, TrackedDevicePose_t[] posesB)
+        {
+            if (posesA.Length != posesB.Length)
+            {
+                throw new IndexOutOfRangeException("Poses A and B must have the same size!");
+            }
+
+            var differences = new List<Tuple<Vector3, Quaternion, bool>>();
+
+            for (int i = 0; i < posesA.Length; i++) {
+                var transformA = new OVRT_Utils.RigidTransform(posesA[i].mDeviceToAbsoluteTracking);
+                var transformB = new OVRT_Utils.RigidTransform(posesB[i].mDeviceToAbsoluteTracking);
+
+                var posDiff = transformA.pos - transformB.pos;
+                var rotDiff = transformB.rot * Quaternion.Inverse(transformA.rot);
+
+                differences.Add(new Tuple<Vector3, Quaternion, bool>(posDiff, rotDiff, posesA[i].bPoseIsValid));
+            }
+
+            return differences;
+        }
+
+        private static Quaternion QuaternionExp(Vector3 v)
+        {
+            float x = v.x / 2f;
+            float y = v.y / 2f;
+            float z = v.z / 2f;
+
+            float th2 = x * x + y * y + z * z;
+            float th = Mathf.Sqrt(th2);
+
+            float c = Mathf.Cos(th);
+            float s = th2 < Mathf.Sqrt(120 * Mathf.Epsilon) ? 1 - th2 / 6f : Mathf.Sin(th) / th;
+
+            return new Quaternion(s * x, s * y, s * z, c);
+        }
+
         private void PredictPoses(TrackedDevicePose_t[] poses, float deltaSec, out TrackedDevicePose_t[] predicedPoses) 
         {
-            if (!_isInitialized) return;
-
             predicedPoses = new TrackedDevicePose_t[poses.Length];
+
+            if (!_isInitialized) return;
             
             for (uint i = 0; i < _poses.Length; i++) {
-                
+                var pose = poses[i];
+                var newPose = pose;
+
+                var rigidTransform = new OVRT_Utils.RigidTransform(poses[i].mDeviceToAbsoluteTracking);
+                var newRigidTransform = rigidTransform;
+
+                newRigidTransform.pos.x = rigidTransform.pos.x + deltaSec * pose.vVelocity.v0;
+                newRigidTransform.pos.y = rigidTransform.pos.y + deltaSec * pose.vVelocity.v1;
+                newRigidTransform.pos.z = rigidTransform.pos.z - deltaSec * pose.vVelocity.v2;
+
+                Vector3 W;
+                W.x = deltaSec * -pose.vAngularVelocity.v0;
+                W.y = deltaSec * -pose.vAngularVelocity.v1;
+                W.z = deltaSec * pose.vAngularVelocity.v2;
+                newRigidTransform.rot = QuaternionExp(W) * rigidTransform.rot;
+
+                newPose.mDeviceToAbsoluteTracking = newRigidTransform.ToHmdMatrix34();
+                predicedPoses[i] = newPose;
             }
         }
 

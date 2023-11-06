@@ -4,8 +4,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Events;
@@ -35,12 +37,18 @@ namespace OVRT
         }
 
         public ETrackingUniverseOrigin trackingUniverse = ETrackingUniverseOrigin.TrackingUniverseStanding;
-        public float displayFrequency = 0f;
+        public bool useSteamVrTrackerRoles = true;
+
+        [Header("Pose prediction")]
         public bool usePosePrediction = true;
         public PosePredictionAlgorithm posePredictionAlgorithm;
         public bool doUpdatePosesBeforeRendering = true;
+        public float displayFrequency = 90;
         public float vsyncToPhotonsSeconds = 0.03f;
-        public bool useSteamVrTrackerRoles = true;
+        public float photonsToVblankSeconds = 0.0f;
+        public uint predictNumFramesAheadUpdate = 0;
+        public uint predictNumFramesAheadBeforeRender = 1;
+        public float additionalPredictionOffsetSeconds = 0.0f;
 
         [Header("Debug")]
         /*[SerializeField]*/ private bool debug_doComparePoses = false;
@@ -240,14 +248,40 @@ namespace OVRT
                     displayFrequency = (float)Screen.currentResolution.refreshRateRatio.value;
                 }
 
-                float secondsSinceLastVsync = Time.realtimeSinceStartup - lastVsyncTimestamp;
-                float frameDuration = 1f / Math.Max(displayFrequency, 1);
-                float secondsFromNow = Mathf.Max(0, frameDuration - secondsSinceLastVsync) + vsyncToPhotonsSeconds;
-                UpdatePoses(secondsFromNow);
+                var predictionSeconds = CalculatePredictionSeconds(predictNumFramesAheadBeforeRender, additionalPredictionOffsetSeconds);
+                UpdatePoses(predictionSeconds);
                 //Debug_ComparePredictedPoses(secondsFromNow);
             }
+        }
 
-            //Debug.Log($"{frameDuration} - {secondsSinceLastVsync} + {vsyncToPhotonsSeconds} = {secondsFromNow}");
+        [DllImport("OVRT_Native")]
+        private static extern bool GetTimeSinceLastVsync(out double secondsSinceLastVsync, out ulong frameCounter);
+
+        [DllImport("OVRT_Native")]
+        private static extern double GetLastVsyncTimestamp();
+
+        public float GetFrameDuration()
+        {
+            return 1f / Math.Max(displayFrequency, 1);
+        }
+
+        public float CalculatePredictionSeconds(uint numFramesAhead = 1, float additionalPredictionOffset = 0f)
+        {
+            if (!GetTimeSinceLastVsync(out double secondsSinceLastVsync, out ulong frameCounter))
+            {
+                secondsSinceLastVsync = 0f;
+                frameCounter = 0;
+            }
+
+            float frameDuration = GetFrameDuration();
+            float secondsFromNow = 
+                Mathf.Max(0, frameDuration - (float)secondsSinceLastVsync) 
+                + numFramesAhead * frameDuration
+                + vsyncToPhotonsSeconds
+                + photonsToVblankSeconds
+                + additionalPredictionOffset;
+
+            return secondsFromNow;
         }
 
         private void OnDeviceConnected(int index, bool connected)
@@ -302,7 +336,8 @@ namespace OVRT
                 }
             }
 
-            UpdatePoses(0);
+            var predictionSeconds = predictNumFramesAheadUpdate * GetFrameDuration();
+            UpdatePoses(predictionSeconds);
         }
 
         private void Debug_ComparePredictedPoses(float predictedSecondsToPhotonsFromNow)
@@ -518,50 +553,5 @@ namespace OVRT
                 runningTemporarySession = false;
             }
         }
-
-        [RuntimeInitializeOnLoadMethod]
-        private static void AddPostVsyncCallback()
-        {
-            var defaultSystems = PlayerLoop.GetDefaultPlayerLoop();
-
-            var updateVsyncTimestampSystem = new PlayerLoopSystem
-            {
-                subSystemList = null,
-                updateDelegate = UpdateVsyncTimestamp,
-                type = typeof(UpdateVsyncTimestamp)
-            };
-
-
-            PlayerLoopSystem newPlayerLoop = new()
-            {
-                loopConditionFunction = defaultSystems.loopConditionFunction,
-                type = defaultSystems.type,
-                updateDelegate = defaultSystems.updateDelegate,
-                updateFunction = defaultSystems.updateFunction
-            };
-
-            List<PlayerLoopSystem> newSubSystemList = new();
-
-            foreach (var subSystem in defaultSystems.subSystemList)
-            {
-                newSubSystemList.Add(subSystem);
-
-                if (subSystem.type == typeof(TimeUpdate))
-                    newSubSystemList.Add(updateVsyncTimestampSystem);
-            }
-
-            newPlayerLoop.subSystemList = newSubSystemList.ToArray();
-
-            PlayerLoop.SetPlayerLoop(newPlayerLoop);
-        }
-
-        private static void UpdateVsyncTimestamp()
-        {
-            lastVsyncTimestamp = Time.realtimeSinceStartup;
-        }
-
-        private static float lastVsyncTimestamp = 0;
     }
-
-    public class UpdateVsyncTimestamp { }
 }

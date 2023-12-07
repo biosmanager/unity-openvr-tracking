@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.1.5] - 2023-12-07
+- Added timing information about pose prediction that can be retrieved
+
 ## [1.1.4] - 2023-10-12
 - Use vertical refresh rate when setting display frequency to 0
 

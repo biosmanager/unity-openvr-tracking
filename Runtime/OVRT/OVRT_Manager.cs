@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -58,6 +59,7 @@ namespace OVRT
         public bool[] ConnectedDeviceIndices { get; private set; } = new bool[OpenVR.k_unMaxTrackedDeviceCount];
         public Dictionary<string, string> Bindings { get; set; } = new Dictionary<string, string>();
         public Dictionary<string, string> SteamVrTrackerBindings { get; private set; } = new Dictionary<string, string>();
+        public OVRT_FrameInfo LastFrameInfo { get; private set; }
 
         private bool _isInitialized = false;
         private CVRSystem _vrSystem;
@@ -267,7 +269,8 @@ namespace OVRT
 
         public float CalculatePredictionSeconds(uint numFramesAhead = 1, float additionalPredictionOffset = 0f)
         {
-            if (!GetTimeSinceLastVsync(out double secondsSinceLastVsync, out ulong frameCounter))
+            var valid = GetTimeSinceLastVsync(out double secondsSinceLastVsync, out ulong frameCounter);
+            if (!valid)
             {
                 secondsSinceLastVsync = 0f;
                 frameCounter = 0;
@@ -280,6 +283,19 @@ namespace OVRT
                 + vsyncToPhotonsSeconds
                 + photonsToVblankSeconds
                 + additionalPredictionOffset;
+
+            LastFrameInfo = new OVRT_FrameInfo
+            {
+                IsHighResolutionTimer = Stopwatch.IsHighResolution,
+                FrameCount = Time.frameCount,
+                FrameCountInternal = frameCounter,
+                IsValidPrediction = valid,
+                LastVsyncTimestampSeconds = GetLastVsyncTimestamp(),
+                SecondsSinceLastVsync = secondsSinceLastVsync,
+                PosePredictionTimestampSeconds = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency,
+                PredictedSeconds = secondsFromNow,
+                FrameDurationSeconds = frameDuration
+            };
 
             return secondsFromNow;
         }

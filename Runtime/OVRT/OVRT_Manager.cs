@@ -285,7 +285,6 @@ namespace OVRT
 
             LastFrameInfo = new OVRT_FrameInfo
             {
-                IsHighResolutionTimer = System.Diagnostics.Stopwatch.IsHighResolution,
                 FrameCount = Time.frameCount,
                 FrameCountInternal = frameCounter,
                 IsValidPrediction = valid,

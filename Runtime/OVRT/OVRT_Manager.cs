@@ -2,7 +2,6 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -286,13 +285,13 @@ namespace OVRT
 
             LastFrameInfo = new OVRT_FrameInfo
             {
-                IsHighResolutionTimer = Stopwatch.IsHighResolution,
+                IsHighResolutionTimer = System.Diagnostics.Stopwatch.IsHighResolution,
                 FrameCount = Time.frameCount,
                 FrameCountInternal = frameCounter,
                 IsValidPrediction = valid,
                 LastVsyncTimestampSeconds = GetLastVsyncTimestamp(),
                 SecondsSinceLastVsync = secondsSinceLastVsync,
-                PosePredictionTimestampSeconds = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency,
+                PosePredictionTimestampSeconds = System.Diagnostics.Stopwatch.GetTimestamp() / (double)System.Diagnostics.Stopwatch.Frequency,
                 PredictedSeconds = secondsFromNow,
                 FrameDurationSeconds = frameDuration
             };
